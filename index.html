@@ -86,8 +86,8 @@ async function init(){
   const { FFmpeg } = FFmpegWASM;
   const { toBlobURL } = FFmpegUtil;
   const hosts = [
-    ['https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd', 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd'],
-    ['https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd', 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'],
+    ['https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd', 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm'],
+    ['https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd', 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm'],
   ];
   msg.textContent = 'Подготовка к конвертации…';
   let lastErr;
