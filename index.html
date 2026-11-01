@@ -84,23 +84,32 @@ drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
 async function init(){
   if (loaded) return;
   const { FFmpeg } = FFmpegWASM;
-  ffmpeg = new FFmpeg();
   const { toBlobURL } = FFmpegUtil;
-  const lib = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd';
-  const core = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+  const hosts = [
+    ['https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd', 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd'],
+    ['https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd', 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'],
+  ];
   msg.textContent = 'Подготовка к конвертации…';
-  await ffmpeg.load({
-    classWorkerURL: await toBlobURL(lib + '/814.ffmpeg.js', 'text/javascript'),
-    coreURL: await toBlobURL(core + '/ffmpeg-core.js', 'text/javascript'),
-    wasmURL: await toBlobURL(core + '/ffmpeg-core.wasm', 'application/wasm'),
-  });
-  loaded = true;
+  let lastErr;
+  for (const [lib, core] of hosts){
+    try {
+      const inst = new FFmpeg();
+      inst.on('log', ({message}) => console.log('[ffmpeg]', message));
+      await inst.load({
+        classWorkerURL: await toBlobURL(lib + '/814.ffmpeg.js', 'text/javascript'),
+        coreURL: await toBlobURL(core + '/ffmpeg-core.js', 'text/javascript'),
+        wasmURL: await toBlobURL(core + '/ffmpeg-core.wasm', 'application/wasm'),
+      });
+      ffmpeg = inst; loaded = true; return;
+    } catch(e){ console.error('load failed via', lib, e); lastErr = e; }
+  }
+  throw lastErr;
 }
 
 async function run(){
   busy = true; go.disabled = true; zipBtn.disabled = true;
   try { await init(); }
-  catch(e){ console.error(e); msg.textContent = 'Не удалось загрузить ядро. Проверьте интернет и обновите страницу.'; busy=false; go.disabled=false; return; }
+  catch(e){ console.error(e); msg.textContent = 'Не удалось загрузить конвертер: ' + (e && e.message ? e.message : e) + '. Обновите страницу (Ctrl+F5) и попробуйте снова.'; busy=false; go.disabled=false; return; }
 
   const { fetchFile } = FFmpegUtil;
   let current = null;
