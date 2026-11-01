@@ -54,8 +54,6 @@ a.dl{color:var(--acc);font-weight:600}
 <ul id="list"></ul>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 const $ = id => document.getElementById(id);
@@ -81,17 +79,38 @@ fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.
 ['dragleave','drop'].forEach(t => drop.addEventListener(t, e => {e.preventDefault(); drop.classList.remove('over');}));
 drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
 
+const MIRRORS = ['https://cdn.jsdelivr.net/npm/', 'https://fastly.jsdelivr.net/npm/', 'https://gcore.jsdelivr.net/npm/', 'https://unpkg.com/'];
+
+function loadScript(src){
+  return new Promise((res, rej) => {
+    const el = document.createElement('script');
+    el.src = src; el.onload = res;
+    el.onerror = () => { el.remove(); rej(new Error('не загрузился ' + src)); };
+    document.head.appendChild(el);
+  });
+}
+
+async function loadLib(globalName, path){
+  if (window[globalName]) return;
+  let err;
+  for (const m of MIRRORS){
+    try { await loadScript(m + path); if (window[globalName]) return; }
+    catch(e){ err = e; }
+  }
+  throw err || new Error('библиотека недоступна');
+}
+
 async function init(){
   if (loaded) return;
+  msg.textContent = 'Подготовка к конвертации…';
+  await loadLib('FFmpegWASM', '@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js');
+  await loadLib('FFmpegUtil', '@ffmpeg/util@0.12.1/dist/umd/index.js');
   const { FFmpeg } = FFmpegWASM;
   const { toBlobURL } = FFmpegUtil;
-  const hosts = [
-    ['https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd', 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm'],
-    ['https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd', 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm'],
-  ];
-  msg.textContent = 'Подготовка к конвертации…';
   let lastErr;
-  for (const [lib, core] of hosts){
+  for (const m of MIRRORS){
+    const lib = m + '@ffmpeg/ffmpeg@0.12.10/dist/umd';
+    const core = m + '@ffmpeg/core@0.12.6/dist/esm';
     try {
       const inst = new FFmpeg();
       inst.on('log', ({message}) => console.log('[ffmpeg]', message));
@@ -101,7 +120,7 @@ async function init(){
         wasmURL: await toBlobURL(core + '/ffmpeg-core.wasm', 'application/wasm'),
       });
       ffmpeg = inst; loaded = true; return;
-    } catch(e){ console.error('load failed via', lib, e); lastErr = e; }
+    } catch(e){ console.error('load failed via', m, e); lastErr = e; }
   }
   throw lastErr;
 }
@@ -155,6 +174,7 @@ async function run(){
 go.addEventListener('click', run);
 
 zipBtn.addEventListener('click', async () => {
+  if (typeof JSZip === 'undefined'){ msg.textContent = 'Не загрузился модуль ZIP. Скачайте файлы по одному.'; return; }
   const zip = new JSZip(), used = new Set();
   for (const q of queue){
     if (!q.blob) continue;
