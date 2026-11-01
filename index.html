@@ -55,12 +55,9 @@ a.dl{color:var(--acc);font-weight:600}
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.1.1/dist/umd/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
-const { FFmpeg } = FFmpegWASM;
-const { fetchFile, toBlobURL } = FFmpegUtil;
-
 const $ = id => document.getElementById(id);
 const fileInput = $('file'), drop = $('drop'), list = $('list'), go = $('go'), zipBtn = $('zip'), msg = $('msg');
 
@@ -86,7 +83,9 @@ drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
 
 async function init(){
   if (loaded) return;
+  const { FFmpeg } = FFmpegWASM;
   ffmpeg = new FFmpeg();
+  const { toBlobURL } = FFmpegUtil;
   const lib = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd';
   const core = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
   msg.textContent = 'Подготовка к конвертации…';
@@ -103,6 +102,7 @@ async function run(){
   try { await init(); }
   catch(e){ console.error(e); msg.textContent = 'Не удалось загрузить ядро. Проверьте интернет и обновите страницу.'; busy=false; go.disabled=false; return; }
 
+  const { fetchFile } = FFmpegUtil;
   let current = null;
   ffmpeg.on('progress', ({progress}) => {
     if (current) current.bar.value = Math.min(100, Math.max(0, Math.round(progress*100)));
